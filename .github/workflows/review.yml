@@ -1,39 +1,23 @@
-name: "Labels: Approved"
-
-concurrency:
-  group: labels
-  cancel-in-progress: false
-  queue: max
+name: "Detect PR Approval"
 
 on:
-  # This event safely opens write permissions for forks
-  pull_request_target:
-    types: [opened, edited, reopened, synchronize]
-  # We also track reviews, but must evaluate them securely
   pull_request_review:
     types: [submitted]
 
 jobs:
-  add_label:
+  detect:
+    # Only run if it's an explicit approval AND the PR is from a fork
+    if: github.event.review.state == 'approved' && github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-
     steps:
-    - name: Check PR Status
-      id: check_review
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: |
-        STATUS=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json reviewDecision --jq '.reviewDecision')
-        echo "decision=$STATUS" >> $GITHUB_OUTPUT
-
-    - name: Add approved label
-      if: steps.check_review.outputs.decision == 'APPROVED'
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        REPO: ${{ github.repository }}
-      run: |
-        gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "S: Approved"
+      - name: Save PR context
+        run: |
+          mkdir -p ./pr
+          echo "${{ github.event.pull_request.number }}" > ./pr/NR
+      
+      - name: Upload PR number
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-approval-${{ github.event.pull_request.number }}
+          path: pr/
+          retention-days: 1 # Minimal retention just in case

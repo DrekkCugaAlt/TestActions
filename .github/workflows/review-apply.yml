@@ -1,0 +1,50 @@
+name: Apply Visual Label
+on:
+  workflow_run:
+    workflows: ["Detect PR Approval"]
+    types: [completed]
+
+jobs:
+  label:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      actions: write
+    steps:
+      - name: Download PR number
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-approval-${{ github.event.workflow_run.triggering_actor.id }} # Safely isolates the correct artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+        continue-on-error: true # Prevents crashes if multiple artifacts overlap
+
+      # Fallback download logic if the name pattern shifts under concurrent runs
+      - name: Alternative Download
+        if: env.PR_NUMBER == ''
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Add Approved Label
+        id: pr_data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(cat NR)
+          echo "Processing PR #$PR_NUMBER"
+          gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --add-label "Approved"
+          echo "pr_num=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Delete Artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_NAME: pr-approval-${{ steps.pr_data.outputs.pr_num }}
+        run: |
+          ID=$(gh api repos/${{ github.repository }}/actions/artifacts --jq ".artifacts[] | select(.name==\"$ARTIFACT_NAME\") | .id" | head -n 1)
+          if [ ! -z "$ID" ]; then
+            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$ID
+          fi
