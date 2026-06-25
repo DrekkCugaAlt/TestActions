@@ -41,3 +41,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: gh pr edit "$PR_NO" --add-label "$LABEL"
+      - name: Remove Old Label
+        continue-on-error: true
+        env:
+          OLD_LABEL: "S: Needs Review"
+        run: gh pr edit "$PR_NO" --repo "${{ github.repository }}" --remove-label "$OLD_LABEL"
