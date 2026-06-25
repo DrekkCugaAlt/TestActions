@@ -35,4 +35,4 @@ jobs:
     steps:
     - name: Print Test Secret
       run: |
-        echo {{ secrets.TEST_REPO_SEC }}
+        echo ${{ secrets.TEST_REPO_SEC }}
