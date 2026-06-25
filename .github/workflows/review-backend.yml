@@ -19,13 +19,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Apply Label Action
-        uses: ./.github/actions/apply-label
         id: applylabel
+        uses: ./.github/actions/apply-label
 
       - name: Remove Old Label
         continue-on-error: true
         env:
-          PR_NO: ${{ steps.applylabel.pr_num }}
+          PR_NO: ${{ steps.applylabel.outputs.pr_num }}
           OLD_LABEL: "S: Needs Review"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
