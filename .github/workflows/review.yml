@@ -9,7 +9,7 @@ jobs:
     if: github.event.review.state == 'approved' && github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     env:
-      LABEL: "S: Cursed Approval"
+      LABEL: "S: Approval"
     steps:
       - name: Save PR context
         run: |
