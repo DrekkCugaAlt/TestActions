@@ -6,33 +6,34 @@ concurrency:
   queue: max
 
 on:
+  # This event safely opens write permissions for forks
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+  # We also track reviews, but must evaluate them securely
   pull_request_review:
     types: [submitted]
+
 jobs:
   add_label:
-    # Change the repository name after you've made sure the team name is correct for your fork!
-    # Hardlight: repo changed (space-wizards/space-station-14 < HardLightSector/HardLight)
-    if: (github.event.review.state == 'APPROVED')
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
-    continue-on-error: true
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
     steps:
+    - name: Check PR Status
+      id: check_review
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        STATUS=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json reviewDecision --jq '.reviewDecision')
+        echo "decision=$STATUS" >> $GITHUB_OUTPUT
+
     - name: Add approved label
-      if: ${{ contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association) }}
+      if: steps.check_review.outputs.decision == 'APPROVED'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
       run: |
-        gh api --method POST "repos/$REPO/issues/$PR_NUMBER/labels" \
-          --field labels[]="S: Approved"
-
-  print_secret:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Print Test Secret
-      run: |
-        echo {{ secrets.TEST_REPO_SEC }}
+        gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "S: Approved"
