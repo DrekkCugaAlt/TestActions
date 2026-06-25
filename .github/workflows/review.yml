@@ -31,6 +31,10 @@ jobs:
   branch-approval:
     if: github.event.review.state == 'approved' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
       - name: Add Label
         env:
