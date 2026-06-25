@@ -1,52 +1,25 @@
-name: "Labels: Approved"
-
-run-name: "Approval PR #${{ github.event.pull_request.number || 'Metadata Check' }}"
+name: "Labels: Approval"
 
 on:
   pull_request_review:
     types: [submitted]
 
-  workflow_run:
-    workflows: ["Labels: Approved"]
-    types: [completed]
-
 jobs:
   detect-approval:
-    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && github.event.pull_request.head.repo.full_name != github.repository
+    if: github.event.review.state == 'approved' && github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
+    env:
+      LABEL: "S: Cursed Approval"
     steps:
-      - name: Acknowledge Approval Event
-        run: echo "PR Approval detected. Passing task to secure main branch runner..."
-
-  # Phase 2 Job: Runs invisibly on the default branch backend (Hidden from the PR checks panel)
-  apply-label-securely:
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write # Guaranteed to be authorized here
-
-    steps:
-      - name: Parse PR Number From Event Title via Bash
-        id: parse_metadata
-        env:
-          PARENT_TITLE: "${{ github.event.workflow_run.display_title }}"
+      - name: Save PR context
         run: |
-          echo "Inspecting Parent Workflow Name: $PARENT_TITLE"
-          
-          # Use standard native bash regex pattern matching to pull out the digits
-          if [[ "$PARENT_TITLE" =~ PR\ \#([0-9]+) ]]; then
-            PR_NUMBER="${BASH_REMATCH[1]}"
-            echo "Successfully isolated Fork: PR #$PR_NUMBER"
-            echo "target_pr=$PR_NUMBER" >> $GITHUB_OUTPUT
-          else
-            echo "Error: Could not locate a valid PR ID format in the text string."
-            exit 1
-          fi
-
-      - name: Apply Approved Tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TARGET_PR: ${{ steps.parse_metadata.outputs.target_pr }}
-        run: |
-          # Apply the visual label directly using the native GitHub CLI tool
-          gh pr edit "$TARGET_PR" --repo "${{ github.repository }}" --add-label "S: Cursed Approval"
+          mkdir -p ./pr
+          echo "${{ github.event.pull_request.number }}" > ./pr/NR
+          echo "$LABEL" > ./pr/LABEL
+      
+      - name: Upload PR number
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-approval-${{ github.run_id }}
+          path: pr/
+          retention-days: 1
