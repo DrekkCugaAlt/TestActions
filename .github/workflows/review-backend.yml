@@ -19,3 +19,11 @@ jobs:
 
       - name: Run Apply Label Action
         uses: ./.github/actions/apply-label
+        id: applylabel
+
+      - name: Remove Old Label
+        continue-on-error: true
+        env:
+          PR_NO: github.steps.applylabel.pr_num
+          OLD_LABEL: "S: Needs Review"
+        run: 'gh pr edit "$PR_NO" --repo "${{ github.repository }}" --remove-label "$OLD_LABEL"'
