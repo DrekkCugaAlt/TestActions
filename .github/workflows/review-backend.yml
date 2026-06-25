@@ -25,7 +25,7 @@ jobs:
       - name: Remove Old Label
         continue-on-error: true
         env:
-          PR_NO: github.steps.applylabel.pr_num
+          PR_NO: ${{ steps.applylabel.pr_num }}
           OLD_LABEL: "S: Needs Review"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
